@@ -4,8 +4,6 @@ Um sistema simples de registro de ponto (Entrada e Saída) construído com Googl
 
 ![alt text](image-1.png)
 
-> **Dica:** Tire um print da tela do seu app, suba a imagem para o GitHub e substitua o link acima.
-
 ## ✨ Funcionalidades
 
 - **Registro de Entrada e Saída:** Botões claros e distintos para cada ação
