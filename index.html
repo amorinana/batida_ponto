@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif; margin: 20px; text-align: center; background-color: #f4f4f9; }
+      #container { max-width: 400px; margin: 0 auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      #logo { max-width: 150px; margin-bottom: 15px; }
+      h2 { color: #333; }
+      input[type="text"], select { 
+        width: 95%; 
+        padding: 12px; 
+        margin-bottom: 15px; 
+        border: 1px solid #ccc; 
+        border-radius: 4px; 
+        font-size: 16px;
+        box-sizing: border-box; /* Garante que o padding não aumente a largura total */
+      }
+      .button-group { display: flex; gap: 10px; margin-top: 20px; }
+      button { flex: 1; color: white; padding: 15px 20px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; transition: background-color 0.2s; }
+      #btnEntrada { background-color: #34A853; }
+      #btnSaida { background-color: #EA4335; }
+      button:disabled { background-color: #aaa; cursor: not-allowed; }
+      #status { margin-top: 20px; font-weight: bold; min-height: 20px; }
+    </style>
+  </head>
+  <body>
+    <div id="container">
+      <img id="logo" src="https://cdn.prod.website-files.com/6810e8cd1c64e82623876ba8/6811022220b8fb623490040c_logo.svg" alt="Logo da Empresa">
+      <h2>Registro de Ponto</h2>
+      
+      <input type="text" id="nome" placeholder="Seu nome completo">
+      <input type="text" id="empresa" placeholder="Nome da empresa terceira">
+      <select id="area">
+        <option value="" disabled selected>Selecione a área de trabalho</option>
+        <option value="Recebimento">Recebimento</option>
+        <option value="Estoque">Estoque</option>
+        <option value="PMM">PMM</option>
+        <option value="CQI">CQI</option>
+        <option value="Expedição">Expedição</option>
+      </select>
+      
+      <div class="button-group">
+        <button id="btnEntrada" onclick="iniciarRegistro('Entrada')">Registrar Entrada</button>
+        <button id="btnSaida" onclick="iniciarRegistro('Saída')">Registrar Saída</button>
+      </div>
+      <div id="status"></div>
+    </div>
+
+    <script>
+      const btnEntrada = document.getElementById('btnEntrada');
+      const btnSaida = document.getElementById('btnSaida');
+      const statusDiv = document.getElementById('status');
+      const nomeInput = document.getElementById('nome');
+      const empresaInput = document.getElementById('empresa'); // NOVO
+      const areaSelect = document.getElementById('area');       // NOVO
+
+      function iniciarRegistro(tipoRegistro) {
+        // Validação para todos os campos
+        if (nomeInput.value.trim() === "" || empresaInput.value.trim() === "" || areaSelect.value === "") {
+          statusDiv.style.color = 'red';
+          statusDiv.innerText = 'Por favor, preencha todos os campos.';
+          return;
+        }
+
+        btnEntrada.disabled = true;
+        btnSaida.disabled = true;
+        statusDiv.innerText = 'Obtendo localização...';
+
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => onSuccess(position, tipoRegistro),
+            onError, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          );
+        } else {
+          onError({ code: -1, message: 'Geolocalização não é suportada.' });
+        }
+      }
+
+      function onSuccess(position, tipoRegistro) {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        const nome = nomeInput.value;
+        const empresa = empresaInput.value; // Pega o valor da empresa
+        const area = areaSelect.value;       // Pega o valor da área
+        
+        statusDiv.innerText = 'Localização obtida. Enviando registro...';
+
+        // ATUALIZADO: Envia os novos dados para a função do servidor
+        google.script.run
+          .withSuccessHandler(onRegisterSuccess)
+          .withFailureHandler(onRegisterFailure)
+          .registrarPonto(nome, empresa, area, tipoRegistro, lat, lon);
+      }
+
+      function onError(error) {
+        let errorMsg = 'Erro ao obter localização: ';
+        switch(error.code) {
+          case error.PERMISSION_DENIED: errorMsg += "Você negou a permissão."; break;
+          case error.POSITION_UNAVAILABLE: errorMsg += "Informação de localização indisponível."; break;
+          case error.TIMEOUT: errorMsg += "A requisição expirou. Tente novamente."; break;
+          default: errorMsg += error.message || "Ocorreu um erro desconhecido."; break;
+        }
+        statusDiv.style.color = 'red';
+        statusDiv.innerText = errorMsg;
+        reabilitarBotoes();
+      }
+
+      function onRegisterSuccess(message) {
+        statusDiv.style.color = 'green';
+        statusDiv.innerText = message;
+        // Limpa os campos após o sucesso
+        nomeInput.value = "";
+        empresaInput.value = "";
+        areaSelect.value = "";
+        reabilitarBotoes();
+      }
+
+      function onRegisterFailure(error) {
+        statusDiv.style.color = 'red';
+        statusDiv.innerText = 'Falha ao comunicar com o servidor: ' + error.message;
+        reabilitarBotoes();
+      }
+      
+      function reabilitarBotoes() {
+        btnEntrada.disabled = false;
+        btnSaida.disabled = false;
+      }
+    </script>
+  </body>
+</html>
